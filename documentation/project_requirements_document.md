@@ -1,117 +1,133 @@
-# Project Requirements Document: codeguide-starter
+# Project Requirements Document
 
----
+# Project Requirements Document (PRD)
 
 ## 1. Project Overview
 
-The **codeguide-starter** project is a boilerplate web application that provides a ready-made foundation for any web project requiring secure user authentication and a post-login dashboard. It sets up the common building blocks—sign-up and sign-in pages, API routes to handle registration and login, and a simple dashboard interface driven by static data. By delivering this skeleton, it accelerates development time and ensures best practices are in place from day one.
+You’re building a conversational CRM assistant powered by OpenAI’s GPT-5 so that individual salespeople or marketers can manage their leads purely by chatting. Instead of manually filling forms, the user types natural‐language commands like “Add a lead named Jane Doe at Acme Corp, set stage to Prospect,” and the AI creates or updates records automatically. All lead data (name, email, company, stage, optional notes) lives in a PostgreSQL database, and there’s a teal‐accented dashboard to visualize key metrics. An Excel export button generates an on‐demand spreadsheet of all leads.
 
-This starter kit is being built to solve the friction developers face when setting up repeated common tasks: credential handling, session management, page routing, and theming. Key objectives include: 1) delivering a fully working authentication flow (registration & login), 2) providing a gated dashboard area upon successful login, 3) establishing a clear, maintainable project structure using Next.js and TypeScript, and 4) demonstrating a clean theming approach with global and section-specific CSS. Success is measured by having an end-to-end login journey in under 200 lines of code and zero runtime type errors.
-
----
+The core problem this solves is eliminating friction in lead management—no more jumping between chat, spreadsheets, and CRM forms. You’re streamlining data entry, updates, and reporting into one chat window plus a simple dashboard. Success criteria include: 1) users can add or update leads via chat without errors; 2) dashboard charts (new leads today, conversion rate, pipeline status) load in under a second; and 3) Excel exports download immediately with the correct columns.
 
 ## 2. In-Scope vs. Out-of-Scope
 
 ### In-Scope (Version 1)
-- User registration (sign-up) form with validation
-- User login (sign-in) form with validation
-- Next.js API routes under `/api/auth/route.ts` handling:
-  - Credential validation
-  - Password hashing (e.g., bcrypt)
-  - Session creation or JWT issuance
-- Protected dashboard pages under `/dashboard`:
-  - `layout.tsx` wrapping dashboard content
-  - `page.tsx` rendering static data from `data.json`
-- Global application layout in `/app/layout.tsx`
-- Basic styling via `globals.css` and `dashboard/theme.css`
-- TypeScript strict mode enabled
+
+*   **Authentication & User Management**\
+    – Email-based sign-up/sign-in (single role; no admin vs. rep)
+*   **Chat-Driven Lead CRUD**\
+    – Create, read, update lead records with GPT-5\
+    – Fields: name, email, company, stage, optional notes\
+    – AI follow-ups for missing required fields
+*   **Dashboard Visualization**\
+    – Three charts: new leads today, overall conversion rate, pipeline breakdown by stage\
+    – Teal color palette, mobile-friendly layout
+*   **On-Demand Excel Export**\
+    – Button triggers backend to generate and download `.xlsx`\
+    – Columns: name, email, company, stage, notes, created/updated timestamps
+*   **Responsive UI**\
+    – Works on desktop and mobile (drawer navigation on narrow screens)
+*   **Data Persistence**\
+    – Next.js API → Drizzle ORM → PostgreSQL\
+    – Docker Compose for local/dev environment
 
 ### Out-of-Scope (Later Phases)
-- Integration with a real database (PostgreSQL, MongoDB, etc.)
-- Advanced authentication flows (password reset, email verification, MFA)
-- Role-based access control (RBAC)
-- Multi-tenant or white-label theming
-- Unit, integration, or end-to-end testing suites
-- CI/CD pipeline and production deployment scripts
 
----
+*   Multi-user teams or role-based permissions
+*   Integrations with external CRMs, calendars, or email providers
+*   Phone number or other custom fields beyond specified five
+*   Scheduled, recurring report exports
+*   Advanced compliance (GDPR workflows, audit logs)
+*   Custom branding beyond teal primary color
 
 ## 3. User Flow
 
-A new visitor lands on the root URL and sees a welcome page with options to **Sign Up** or **Sign In**. If they choose Sign Up, they fill in their email, password, and hit “Create Account.” The form submits to `/api/auth/route.ts`, which hashes the password, creates a new user session or token, and redirects them to the dashboard. If any input is invalid, an inline error message explains the issue (e.g., “Password too short”).
+When a new user lands on the site (desktop or mobile), they see a clean teal-accented landing page with “Sign Up” and “Sign In” buttons. They tap “Sign Up,” enter an email and password, then arrive at the main interface without any role choices. The header shows a “Dashboard” icon, and below is a persistent chat window that invites natural-language commands.
 
-Once authenticated, the user is taken to the `/dashboard` route. Here they see a sidebar or header defined by `dashboard/layout.tsx`, and the main panel pulls in static data from `data.json`. They can log out (if that control is present), but otherwise their entire session is managed by server-side cookies or tokens. Returning users go directly to Sign In, submit credentials, and upon success they land back on `/dashboard`. Any unauthorized access to `/dashboard` redirects back to Sign In.
-
----
+A typical session: the user types “Add a lead: John Smith at WidgetCo, stage = Prospect.” The assistant confirms any missing fields (“Would you like to add notes?”) or records the entry directly. Later, the user asks “Update John Smith’s stage to Qualified and add note ‘sent pricing’.” The AI checks the database, applies the update, and replies “John Smith updated.” At any point, the user taps the Dashboard icon to view three real-time charts (new leads today, conversion rate, pipeline). From the dashboard, they hit “Export Report” to download an Excel file containing all leads.
 
 ## 4. Core Features
 
-- **Sign-Up Page (`/app/sign-up/page.tsx`)**: Form fields for email & password, client-side validation, POST to `/api/auth`.
-- **Sign-In Page (`/app/sign-in/page.tsx`)**: Form fields for email & password, client-side validation, POST to `/api/auth`.
-- **Authentication API (`/app/api/auth/route.ts`)**: Handles both registration and login based on HTTP method, integrates password hashing (bcrypt) and session or JWT logic.
-- **Global Layout (`/app/layout.tsx` + `globals.css`)**: Shared header, footer, and CSS resets across all pages.
-- **Dashboard Layout (`/app/dashboard/layout.tsx` + `dashboard/theme.css`)**: Sidebar or top nav for authenticated flows, section-specific styling.
-- **Dashboard Page (`/app/dashboard/page.tsx`)**: Reads `data.json`, renders it as cards or tables.
-- **Static Data Source (`/app/dashboard/data.json`)**: Example dataset to demo dynamic rendering.
-- **TypeScript Configuration**: `tsconfig.json` with strict mode and path aliases (if any).
-
----
+*   **Email-Based Authentication**\
+    Simple sign-up/sign-in with single user role (no roles/permissions).
+*   **GPT-5 Conversational Interface**\
+    Natural language parsing, follow-up prompts, error handling.
+*   **Lead Management via Chat**\
+    Create/update leads (name, email, company, stage, notes)\
+    Contextual prompts for missing fields.
+*   **Real-Time Dashboard**\
+    Charts for new leads today, overall conversion rate, pipeline stages\
+    Auto-refresh on navigation.
+*   **On-Demand Excel Export**\
+    Backend endpoint streams `.xlsx` using ExcelJS, matching lead schema.
+*   **Mobile-First Responsive Design**\
+    Drawer navigation, resizable chart components, accessible touch targets.
+*   **Data Layer & Tool Integration**\
+    Next.js API routes → Drizzle ORM → PostgreSQL → Docker Compose
 
 ## 5. Tech Stack & Tools
 
-- **Framework**: Next.js (App Router) for file-based routing, SSR/SSG, and API routes.
-- **Language**: TypeScript for type safety.
-- **UI Library**: React 18 for component-based UI.
-- **Styling**: Plain CSS via `globals.css` (global reset) and `theme.css` (sectional styling). Can easily migrate to CSS Modules or Tailwind in the future.
-- **Backend**: Node.js runtime provided by Next.js API routes.
-- **Password Hashing**: bcrypt (npm package).
-- **Session/JWT**: NextAuth.js or custom JWT logic (to be decided in implementation).
-- **IDE & Dev Tools**: VS Code with ESLint, Prettier extensions. Optionally, Cursor.ai for AI-assisted coding.
-
----
+*   **Frontend**\
+    – Next.js (React framework)\
+    – TypeScript\
+    – Tailwind CSS + Shadcn UI components
+*   **Backend**\
+    – Next.js API routes\
+    – Drizzle ORM (TypeScript-first)\
+    – PostgreSQL (Docker)\
+    – ExcelJS for `.xlsx` generation
+*   **AI Integration**\
+    – OpenAI GPT-5 via server-side API calls
+*   **Authentication**\
+    – better-auth (or NextAuth) for email/password
+*   **Development Tools**\
+    – Docker Compose for local env\
+    – VS Code (Cursor, Windsurf plugins optional)
 
 ## 6. Non-Functional Requirements
 
-- **Performance**: Initial page load under 200 ms on a standard broadband connection. API responses under 300 ms.
-- **Security**:
-  - HTTPS only in production.
-  - Proper CORS, CSRF protection for API routes.
-  - Secure password storage (bcrypt with salt).
-  - No credentials or secrets checked into version control.
-- **Scalability**: Structure must support adding database integration, caching layers, and advanced auth flows without rewiring core app.
-- **Usability**: Forms should give real-time feedback on invalid input. Layout must be responsive (mobile > 320 px).
-- **Maintainability**: Code must adhere to TypeScript strict mode. Linting & formatting enforced by ESLint/Prettier.
-
----
+*   **Performance**\
+    – API response <200 ms for simple CRUD calls\
+    – Dashboard charts load <1 s on typical broadband/mobile
+*   **Security**\
+    – TLS for all network traffic\
+    – Database at-rest encryption via PostgreSQL config\
+    – Sanitized inputs to prevent injection
+*   **Usability**\
+    – WCAG-compatible touch targets (≥44 px)\
+    – Color contrast passes accessibility guidelines
+*   **Scalability**\
+    – Single-user scale initially, architecture allows horizontal scaling
 
 ## 7. Constraints & Assumptions
 
-- **No Database**: Dashboard uses only `data.json`; real database integration is deferred.
-- **Node Version**: Requires Node.js >= 14.
-- **Next.js Version**: Built on Next.js 13+ App Router.
-- **Authentication**: Assumes availability of bcrypt or NextAuth.js at implementation time.
-- **Hosting**: Targets serverless or Node.js-capable hosting (e.g., Vercel, Netlify).
-- **Browser Support**: Modern evergreen browsers; no IE11 support required.
-
----
+*   GPT-5 API access and rate limits are available and sufficient.
+*   Only one user per account—no multi-tenant logic.
+*   No external integrations (CRM, email, calendar).
+*   Starter kit configuration (CodeGuide Fullstack) drives project structure.
+*   Users have modern browsers; legacy IE support not required.
 
 ## 8. Known Issues & Potential Pitfalls
 
-- **Static Data Limitation**: `data.json` is only for demo. A real API or database will be needed to avoid stale data.
-  *Mitigation*: Define a clear interface for data fetching so swapping to a live endpoint is trivial.
+*   **AI Hallucinations**\
+    – Mitigation: always confirm key fields before persisting; validate email format.
+*   **API Rate Limits**\
+    – Mitigation: batch calls or implement retry/back-off logic.
+*   **Excel Generation Load**\
+    – For large lead sets, stream rows instead of in-memory build.
+*   **Mobile Performance**\
+    – Charting libraries can be heavy; use lightweight, canvas-based charts.
+*   **Database Concurrency**\
+    – Locking on updates if two chat commands reference the same lead; handle version conflicts gracefully.
 
-- **Global CSS Conflicts**: Using global styles can lead to unintended overrides.
-  *Mitigation*: Plan to migrate to CSS Modules or utility-first CSS in Phase 2.
+*This PRD provides a complete, unambiguous blueprint for the AI model and any subsequent technical documents. All core features, flows, and constraints are defined so you can directly generate architecture designs, frontend guidelines, and backend structures without further clarification.*
 
-- **API Route Ambiguity**: Single `/api/auth/route.ts` handling both sign-up and sign-in could get complex.
-  *Mitigation*: Clearly branch on HTTP method (`POST /register` vs. `POST /login`) or split into separate files.
-
-- **Lack of Testing**: No test suite means regressions can slip in.
-  *Mitigation*: Build a minimal Jest + React Testing Library setup in an early iteration.
-
-- **Error Handling Gaps**: Client and server must handle edge cases (network failures, malformed input).
-  *Mitigation*: Define a standard error response schema and show user-friendly messages.
 
 ---
-
-This PRD should serve as the single source of truth for the AI model or any developer generating the next set of technical documents: Tech Stack Doc, Frontend Guidelines, Backend Structure, App Flow, File Structure, and IDE Rules. It contains all functional and non-functional requirements with no ambiguity, enabling seamless downstream development.
+**Document Details**
+- **Project ID**: 035d385e-0595-41b5-ab10-8b244d5ee4d3
+- **Document ID**: 04a2394f-7109-41aa-b5f4-73ccd9b49dd9
+- **Type**: custom
+- **Custom Type**: project_requirements_document
+- **Status**: completed
+- **Generated On**: 2025-10-05T12:56:59.018Z
+- **Last Updated**: 2025-10-07T11:47:09.705Z

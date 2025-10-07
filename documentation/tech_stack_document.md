@@ -1,90 +1,109 @@
 # Tech Stack Document
 
-This document explains the key technologies chosen for the **codeguide-starter** project. It’s written in everyday language so anyone—technical or not—can understand why each tool was picked and how it supports the application.
+# Tech Stack Document
+
+This document explains the technology choices for the CRM AI Assistant project in plain, everyday language. You don’t need a technical background to understand why each piece was picked and how they all work together.
 
 ## 1. Frontend Technologies
-The frontend is everything the user sees and interacts with. For this project, we’ve used:
 
-- **Next.js (App Router)**
-  - A React framework that makes page routing, server-side rendering, and API routes very simple.
-  - Enhances user experience by pre-rendering pages on the server or at build time, leading to faster initial load.
-- **React 18**
-  - The underlying library for building user interfaces with reusable components.
-  - Provides a smooth, interactive experience thanks to its virtual DOM and modern hooks.
-- **TypeScript**
-  - A superset of JavaScript that adds types (labels for data).
-  - Helps catch errors early during development and makes the code easier to maintain.
-- **CSS (globals.css & theme.css)**
-  - **globals.css** applies base styles (fonts, colors, resets) across the entire app.
-  - **dashboard/theme.css** defines the look and feel specific to the dashboard area.
-  - This separation keeps styles organized and avoids accidental style conflicts.
+We built the user-facing side of the app (what you see and click on) using these main tools:
 
-By combining these tools, we have a clear structure (Next.js folders for pages and layouts), safer code (TypeScript), and flexible styling with vanilla CSS.
+- **Next.js**  
+  A modern web framework that makes building pages and handling data easy. It gives us fast page loads, automatic code splitting (only sending users the code they need), and built-in support for both server-rendered and client-rendered pages.
+
+- **TypeScript**  
+  A version of JavaScript with extra checks. It helps catch mistakes early by verifying that data types (like text or numbers) match what the code expects.
+
+- **Tailwind CSS**  
+  A styling toolkit that provides ready-made CSS classes so we can style buttons, forms, and layouts quickly. Using Tailwind keeps our styles consistent and easy to update—our primary color (teal) is defined just once and used everywhere.
+
+- **Shadcn UI**  
+  A collection of prebuilt components (buttons, modals, tables, charts) that look great out of the box and follow accessibility best practices. This speeds up development and ensures a uniform look and feel.
+
+- **Chart Components (built on Chart.js)**  
+  We use interactive chart components to display metrics like new leads today or pipeline breakdown. These are wrapped in Shadcn UI for styling consistency.
+
+- **ExcelJS**  
+  A JavaScript library that runs in the browser and on the server to generate Excel files. This powers the one-click report export feature, creating a downloadable .xlsx file on demand.
 
 ## 2. Backend Technologies
-The backend handles data, user accounts, and the logic behind the scenes. Our choices here are:
 
-- **Next.js API Routes**
-  - Allows us to write server-side code (`route.ts` files) alongside our frontend in the same project.
-  - Runs on Node.js, so we can handle requests like sign-up, sign-in, and data fetching in one place.
-- **Node.js Runtime**
-  - The JavaScript environment on the server that executes our API routes.
-- **bcrypt** (npm package)
-  - A library for hashing passwords securely before storing them.
-  - Ensures that even if someone got access to our data, raw passwords aren’t visible.
-- **(Optional) NextAuth.js or JWT**
-  - While this starter kit shows a custom authentication flow, it can easily integrate services like NextAuth.js for email-based login or JWT (JSON Web Tokens) for stateless sessions.
+Behind the scenes, our server handles data storage, AI calls, and report generation:
 
-These components work together to receive user credentials, verify or store them securely, manage sessions or tokens, and deliver protected data back to the frontend.
+- **Next.js API Routes**  
+  Part of the same Next.js project, these are simple file-based endpoints (URLs) that run server code. When the chat interface asks to add or update a lead, it calls one of these routes.
+
+- **Drizzle ORM**  
+  A friendly way to interact with our database without writing raw SQL. It turns database tables into TypeScript objects, making queries safer and clearer.
+
+- **PostgreSQL**  
+  A reliable open-source relational database that stores all lead details (name, email, company, stage, notes, timestamps). It runs in a Docker container locally and can run in a managed service in production.
+
+- **OpenAI GPT-5 API**  
+  The engine behind our AI assistant. When you type a message in the chat, our backend sends it to OpenAI’s GPT-5 service, receives a response, then carries out any “tool calls” (like saving or updating leads).
+
+- **better-auth**  
+  A lightweight authentication solution that handles user sign-up, sign-in, and session management. Since everyone has the same single role, it keeps the flow simple.
 
 ## 3. Infrastructure and Deployment
-Infrastructure covers where and how we host the app, as well as how changes get delivered:
 
-- **Git & GitHub**
-  - Version control system (Git) and remote hosting (GitHub) keep track of all code changes and allow team collaboration.
-- **Vercel (or Netlify)**
-  - A popular hosting service optimized for Next.js, with one-click deployments and global content delivery.
-  - Automatically rebuilds and deploys the site whenever code is pushed to the main branch.
-- **GitHub Actions (CI/CD)**
-  - Automates tasks like linting (ESLint), formatting (Prettier), and running any tests you add.
-  - Ensures that only clean, tested code goes live.
+To keep development smooth and ensure reliable deployment:
 
-Together, these tools provide a reliable, scalable setup where every code change is tested and deployed quickly, with minimal manual work.
+- **Docker & Docker Compose**  
+  We containerize the database (PostgreSQL) and can containerize the entire app if needed. Docker Compose simplifies starting all parts (app + database) locally with one command.
+
+- **Version Control (Git + GitHub)**  
+  All code lives in a GitHub repository. Every change is tracked, reviewed via pull requests, and easy to roll back if needed.
+
+- **CI/CD (GitHub Actions)**  
+  On every push to main, tests can run automatically and, if they pass, the app can deploy to production. This keeps deployments consistent and error-free.
+
+- **Hosting (Vercel)**  
+  We host the Next.js frontend and API routes on Vercel, a platform designed specifically for Next.js. It offers automatic scaling, global edge caching, and zero-configuration deployments.
 
 ## 4. Third-Party Integrations
-While this starter kit is minimal by design, it already includes or can easily add:
 
-- **bcrypt**
-  - For secure password hashing (included as an npm dependency).
-- **NextAuth.js** (optional)
-  - A full-featured authentication library supporting email/password, OAuth, and more.
-- **Sentry or LogRocket** (optional)
-  - For real-time error tracking and performance monitoring in production.
+We keep external dependencies minimal:
 
-These integrations help extend the app’s capabilities without building every feature from scratch.
+- **OpenAI**  
+  For all AI-powered chat and lead-processing intelligence.
+
+- **ExcelJS**  
+  For generating on-demand Excel reports in the browser or server.
+
+No other CRMs, email services, or payment processors are connected to keep the application focused and secure.
 
 ## 5. Security and Performance Considerations
-We’ve baked in several measures to keep users safe and the app running smoothly:
 
-Security:
-- Passwords are never stored in plain text—bcrypt hashes them with a random salt.
-- API routes can implement CSRF protection and input validation to block malicious requests.
-- Session tokens or cookies are marked secure and HttpOnly to prevent theft via JavaScript.
+Security Measures:
 
-Performance:
-- Server-side rendering (SSR) and static site generation (SSG) in Next.js deliver pages faster.
-- Code splitting and lazy-loaded components ensure users only download what they need.
-- Global CSS and theme files are small and cached by the browser for quick repeat visits.
+- **Authentication** via better-auth with secure cookies or tokens.  
+- **Environment Variables** store sensitive keys (OpenAI key, database URL) outside of code.  
+- **Database Encryption** is enabled by default in PostgreSQL if you choose a managed service—keeping data at rest safe.
 
-These strategies work together to give users a fast, secure experience every time.
+Performance Optimizations:
+
+- **Next.js Code-Splitting** ensures each page only loads the JavaScript and CSS it needs.  
+- **Server-Side Rendering & Static Generation** for fast first paint and SEO benefits.  
+- **Tailwind’s Purge** feature removes unused CSS, keeping files small.  
+- **API Route Caching** (where applicable) to avoid repeated database calls for static data.
 
 ## 6. Conclusion and Overall Tech Stack Summary
-In building **codeguide-starter**, we chose technologies that:
 
-- Align with modern web standards (Next.js, React, TypeScript).
-- Provide a clear, file-based project structure for rapid onboarding.
-- Offer built-in support for server-side rendering, API routes, and static assets.
-- Emphasize security through password hashing, session management, and safe defaults.
-- Enable easy scaling and future enhancements via modular code and optional integrations.
+Our CRM AI Assistant uses a modern, widely adopted set of tools:
 
-This stack strikes a balance between simplicity for newcomers and flexibility for experienced teams. It accelerates development of a secure authentication flow and a polished dashboard, while leaving room to plug in databases, test suites, and advanced features as the project grows.
+- Frontend: Next.js, TypeScript, Tailwind CSS, Shadcn UI, Chart.js, ExcelJS
+- Backend: Next.js API routes, Drizzle ORM, PostgreSQL, OpenAI GPT-5, better-auth
+- Infrastructure: Docker Compose (local), GitHub + GitHub Actions, Vercel deployment
+
+This stack was chosen to deliver a fast, responsive, mobile-friendly experience with minimal overhead. The AI chat interface powered by GPT-5 simplifies lead management, the dashboard offers real-time insights, and one-click exports ensure you always have your data at hand. Everything is built to scale seamlessly as your needs grow, while keeping the setup and ongoing maintenance straightforward.
+
+---
+**Document Details**
+- **Project ID**: 035d385e-0595-41b5-ab10-8b244d5ee4d3
+- **Document ID**: 8d58b1a1-92b7-4d67-a3b8-82209bab1906
+- **Type**: custom
+- **Custom Type**: tech_stack_document
+- **Status**: completed
+- **Generated On**: 2025-10-05T12:58:41.305Z
+- **Last Updated**: 2025-10-07T11:47:05.260Z

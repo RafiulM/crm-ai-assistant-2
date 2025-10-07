@@ -1,41 +1,66 @@
 # App Flow Document
 
+# App Flow Document
+
 ## Onboarding and Sign-In/Sign-Up
 
-When a new visitor arrives at the application’s root URL, they land on a welcome page that offers clear buttons or links to either create an account or sign in. Clicking on the “Sign Up” link takes the visitor to a registration page where they enter their email address and choose a password. Once they submit the form, the application sends a POST request to the authentication API endpoint, which handles password hashing and user creation. If registration succeeds, the new user is automatically signed in and redirected to the dashboard. If there are validation errors, such as a password that is too short or an email already in use, the form reappears with inline messages explaining what must be corrected.
+When a new user arrives at the application, they land on a clean teal-accented welcome screen that works smoothly on both desktop and mobile devices. This screen presents options to sign up or sign in using an email address and a chosen password. To create an account, the user taps or clicks the sign-up button, enters their name, email, and a secure password, and then confirms their registration. The system sends a confirmation email, and upon clicking the verification link, the user is automatically logged in and taken to the main chat interface.
 
-For returning users, clicking the “Sign In” link from the welcome page or from a persistent header link opens the login form. They input their email and password, and upon submission the app sends a request to the same authentication API with login credentials. A successful login leads directly to the dashboard. If the credentials are invalid, the page reloads with a clear error message prompting the user to try again.
+For returning users, a sign-in link brings up a form where they enter their email and password. If the credentials match, the user goes directly to the chat view. There is also a “Forgot Password” link beneath the sign-in form. When clicked, it prompts the user to provide their email. The system then sends a password reset link to that address. Following the link lets the user choose a new password, after which they are redirected to the sign-in form and can access the app normally.
 
-Signing out is available from within the dashboard via a logout button in the main navigation or header. When clicked, the application clears the user’s session or token, and then navigates back to the welcome page. Currently, there is no built-in password recovery or reset flow in this version, so users who forget their password are prompted to contact support for assistance.
+From within the app, users can sign out by opening the profile menu in the header and selecting “Sign Out.” This action returns them to the welcome screen. All authentication flows are handled by the built-in auth routes from the starter kit, ensuring secure handling of credentials and password resets.
 
 ## Main Dashboard or Home Page
 
-After authentication, the user lands on the dashboard, which serves as the main home page. The dashboard is wrapped in a layout that displays a header bar and a sidebar navigation tailored for logged-in users. The header bar typically shows the application’s logo on the left and a Logout link on the right. The sidebar sits on the left side of the screen and may contain links back to the dashboard’s main panel or to future features.
+After signing in, the user lands on the main interface with a persistent header and a collapsible sidebar. On larger screens, the sidebar shows icons and labels for Chat, Dashboard, and Settings. On mobile, the sidebar collapses into a drawer accessible by a menu icon in the header. The header also houses a theme toggle and the user’s profile avatar, which opens the menu for signing out or accessing account settings.
 
-The central area of the dashboard page displays data pulled from a static JSON file. This content might appear in cards or tables to give users a quick overview of information. All styling for this section comes from a dedicated theme stylesheet to keep the look consistent. Users can click items or links here, but those actions are placeholders for future dynamic data features.
+The default view is the Chat page, where the user sees a full-height chat area and an input field anchored at the bottom. Above the chat area, a header bar clearly labels the section as “AI Assistant.” This layout keeps the conversation front and center while allowing quick access to other sections.
 
-From this dashboard view, users may revisit the welcome page or any other main area by selecting navigation items in the sidebar or header. The layout ensures that the logout link remains accessible at all times, and that the user cannot leave the authenticated area without signing out manually or having their session expire.
+Navigating to the Dashboard section replaces the chat window with a teal-themed overview page. This page displays three interactive charts stacked vertically on desktop or scrollable on mobile. The first chart shows the number of new leads added today, the second displays overall conversion rate, and the third breaks down the pipeline by lead stages. A prominent “Export Report” button sits at the top of these charts, enabling on-demand Excel exports.
+
+Tapping the Settings section brings up the Account Settings page, where users can update their personal information, change passwords, and configure notification preferences. From any view, users can switch sections either by clicking the corresponding icon in the sidebar or by using the navigation drawer on mobile.
 
 ## Detailed Feature Flows and Page Transitions
 
-When a visitor lands on the root page, JavaScript on the client reads the route and displays either the welcome interface or automatically redirects them to the dashboard if a valid session exists. For new user registration, the user clicks the Sign Up link and is taken to the sign-up page. The sign-up form collects email and password fields, and on submission it triggers a client-side POST to the API route. Once the API responds with success, the client redirects the user to the dashboard page.
+When the user types a command into the chat input such as “Add a new lead named Jane Doe at Acme Corp, set stage to Prospect,” the AI assistant powered by GPT-5 parses the instruction and highlights recognized fields. If any required field is missing, the assistant follows up with a question like “What email should I use for Jane Doe?” When all details are confirmed, the assistant calls the internal API to create a new lead record in the PostgreSQL database. A confirmation message appears in the chat, stating “Lead Jane Doe at Acme Corp has been added with stage Prospect.”
 
-Returning users choose the Sign In link and arrive at the sign-in page, which offers the same fields as the sign-up page but is wired to authenticate rather than create a new account. On form submit, the user sees a loading indication until the API confirms valid credentials. If successful, the client pushes the dashboard route and loads the dashboard layout and content.
+If the user wants to update a lead, they might enter “Update Jane Doe’s stage to Negotiation and add a note that she requested pricing details.” The AI validates whether Jane Doe exists. If found, the assistant issues an API call to update the stage and attach the optional note. The chat history then shows “Jane Doe’s record has been updated to Negotiation with new note.” If the lead name or company does not match any record, the assistant prompts the user: “I couldn’t find that lead. Do you want to create a new lead instead?” The user can then confirm or refine their request.
 
-All authenticated pages reside under the `/dashboard` path. When the user attempts to navigate directly to `/dashboard` without a valid session, server-side redirection logic intercepts the request and sends the user back to the sign-in page. This ensures that protected content never shows to unauthorized visitors.
+Switching to the Dashboard, the user sees charts that reflect the latest data. The app makes a fresh API call when the page loads or when the user navigates back, ensuring real-time metric updates. Expanding any chart on mobile screen is as simple as tapping it, which reveals detailed breakdowns and tooltips. Pressing the “Export Report” button initiates a request to the backend to build an Excel file with columns for name, email, company, stage, notes, and timestamps. The file download begins automatically, and the user can open or save the .xlsx report.
 
-Signing out happens entirely on the client side by calling an API or clearing a cookie, then navigating back to the welcome page. The client code listens for the logout action, invalidates the current session, and then reloads or reroutes the application state to the landing interface.
+If the user taps the Settings icon, the page transitions smoothly using the starter kit’s router. On the Account Settings page, form fields show the current name and email. A “Change Password” section requires the current password and the new password twice. Hitting “Save Changes” triggers an API call to update the user’s profile or credentials. A success toast appears briefly at the top to confirm the update.
 
 ## Settings and Account Management
 
-At present, users cannot change profile information, update their email, or configure notifications from within the interface. The only account management available is the ability to sign out from any dashboard view. In future iterations, a dedicated settings page could be added to let users update personal details or adjust preferences, but in this version, those capabilities are not provided. After signing out, users always return to the welcome page and must sign in again to regain access to the dashboard.
+The Settings section is dedicated to personalizing the user’s experience. Here, users can update their display name and email address. The change email flow requires re-authentication by asking the user to enter their current password. Upon successful update, the system sends a confirmation email to the new address.
+
+Within Settings, there is also a notification preferences subsection. Users can toggle email alerts for new or updated leads. These toggles are styled in teal and reflect mobile accessibility guidelines. Tapping “Save Preferences” writes the new settings to the database and confirms via a subtle on-screen message.
+
+If the user needs to change their password, they enter their current password, choose a new password, and confirm it. The app verifies the current password via the API and then updates the stored hash. After changing the password, the user is asked to sign in again for security. From there, they return to the Chat or Dashboard seamlessly.
+
+After completing any settings update, a “Back to Dashboard” button or clicking the Dashboard icon in the sidebar returns the user to the main flow.
 
 ## Error States and Alternate Paths
 
-If a user types an incorrect email or password on the sign-in page, the authentication API responds with an error status and a message. The form then displays an inline alert near the input fields explaining the issue, such as “Invalid email or password,” allowing the user to correct and resubmit. During sign up, validation errors like a missing field or weak password appear immediately under the relevant input.
+Whenever a user enters invalid data, such as an improperly formatted email or a password that is too short, the form fields show inline error messages in red beneath the input. The assistant in the chat interface also handles errors gracefully. If an API call fails due to network issues, the chat area shows a system message stating “Something went wrong. Please check your connection and try again.” The chat input remains enabled so the user can retry their command.
 
-Network failures trigger a generic error notification at the top of the form, informing the user that the request could not be completed and advising them to check their connection. If the dashboard content fails to load due to a broken or missing static data file, a fallback message appears in the main panel stating that data could not be loaded and suggesting a page refresh. Trying to access a protected route without a session sends the user to the sign-in page automatically, making it clear that authentication is required.
+Loss of connectivity triggers a full-screen overlay on mobile or a banner at the top on desktop, informing the user of offline status. As soon as the connection is restored, the overlay disappears and any unsent chat messages are automatically retried.
+
+If a user attempts to export a report when there are no leads, the Export Report button is disabled and a tooltip reads “No leads available to export.” Trying to add a duplicate lead name prompts the assistant to confirm if they intended to update the existing record instead of creating a new one.
+
+At any point, pressing the sign out option clears the session and returns the user to the welcome page. If the session expires due to inactivity, the user sees a modal telling them their session has ended and prompting them to sign in again.
 
 ## Conclusion and Overall App Journey
 
-A typical user journey starts with visiting the application’s root URL, signing up with an email and password, then being welcomed in the dashboard area that displays sample data. Returning users go directly through the sign-in page to the dashboard. Throughout each step, clear messages guide the user in case of errors or invalid input. The layout remains consistent, with a header and navigation ensuring that users always know where they are and can sign out at any time. This flow lays the foundation for adding dynamic data, user profile management, and richer features in future releases.
+From the first moment the user signs up with their email to the daily routine of chatting with the AI assistant, this application provides a seamless and intuitive way to manage sales leads. The core journey starts with authentication, moves directly into the chat interface for adding or updating lead data through natural language, and flows smoothly into visual insights on the Dashboard. On-demand Excel exports let the user pull all lead data instantly, while Settings pages ensure personal information and preferences stay up to date. Error handling and offline support keep the user informed and able to continue work without losing progress. With a single role and a mobile-friendly design, each individual salesperson or marketer can efficiently track their pipeline from anywhere, ending the day confident that their CRM records are always accurate and accessible.
+
+
+---
+**Document Details**
+- **Project ID**: 035d385e-0595-41b5-ab10-8b244d5ee4d3
+- **Document ID**: c68e208b-d7f3-4836-a9ac-470561573174
+- **Type**: custom
+- **Custom Type**: app_flow_document
+- **Status**: completed
+- **Generated On**: 2025-10-05T12:58:15.800Z
+- **Last Updated**: 2025-10-07T11:47:08.269Z

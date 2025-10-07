@@ -1,179 +1,177 @@
 # Backend Structure Document
 
-This document outlines the backend architecture, hosting, and infrastructure for the **codeguide-starter** project. It uses plain language so anyone can understand how the backend is set up and how it supports the application.
+# Backend Structure Document
+
+This document outlines the backend setup for the CRM AI Assistant. It covers the architecture, database, APIs, hosting, infrastructure, security, monitoring, and maintenance. It’s written in everyday language so anyone can understand how the backend works.
 
 ## 1. Backend Architecture
 
-- **Framework and Design Pattern**
-  - We use **Next.js API Routes** to handle all server-side logic. These routes live alongside the frontend code in the same repository, making development and deployment simpler.
-  - The backend follows a **layered pattern**:
-    1. **API Layer**: Receives requests (login, registration, data fetch).  
-    2. **Service Layer**: Contains the core business logic (user validation, password hashing).  
-    3. **Data Access Layer**: Talks to the database via a simple ORM (e.g., Prisma or TypeORM).
+### Overall Design
+- We’re using Next.js API routes as our backend framework. This means our server code lives alongside our frontend in the same project.
+- We follow a **modular** pattern:
+  - Each feature (leads, dashboard, export, auth) lives in its own folder under `/pages/api/`.
+  - Shared utilities (database connection, OpenAI client, auth helpers) live in a `lib/` folder.
+- We use **Drizzle ORM** to talk to our database in a type-safe way. No raw SQL scattered around.
 
-- **Scalability**
-  - Stateless API routes can scale horizontally—new instances can spin up on demand.  
-  - We can add caching or a message queue (e.g., Redis or RabbitMQ) without changing the core code.
-
-- **Maintainability**
-  - Code for each feature is grouped by route (authentication, dashboard).  
-  - A service layer separates complex logic from request handling.
-
-- **Performance**
-  - Lightweight Node.js handlers keep response times low.  
-  - Future use of database connection pooling and Redis for caching repeated queries.
+### Scalability, Maintainability, Performance
+- **Scalability:** Serverless functions on Vercel (or your cloud of choice) auto-scale based on traffic. Database can be scaled vertically (bigger machine) or horizontally (read replicas).
+- **Maintainability:** Clear folder structure, typed code with TypeScript, and Drizzle migrations keep things consistent and easy to update.
+- **Performance:** Cold starts are minimized by keeping functions small. Database queries use indexes on key columns. Static assets and API routes are served from a global CDN.
 
 ## 2. Database Management
 
-- **Database Choice**
-  - We recommend **PostgreSQL** for structured data and reliable transactions.  
-  - In-memory caching can be added later with **Redis** for session tokens or frequently read data.
+### Technology
+- Type: SQL
+- System: PostgreSQL (running in Docker for local dev, managed Postgres in production)
+- ORM: Drizzle ORM for queries, migrations, and type safety
 
-- **Data Storage and Access**
-  - Use an ORM like **Prisma** or **TypeORM** to map JavaScript/TypeScript objects to database tables.
-  - Connection pooling ensures efficient use of database connections under load.
-  - Migrations track schema changes over time, keeping development, staging, and production in sync.
-
-- **Data Practices**
-  - Passwords are never stored in plain text—they are salted and hashed with **bcrypt** before saving.
-  - All outgoing data is typed and validated to prevent malformed records.
+### Data Practices
+- **Migrations:** We use Drizzle’s migration tool to evolve the schema safely.
+- **Connection Pooling:** We configure connection pools (e.g., 5–10 connections) to avoid overload.
+- **Backups:** Automated daily backups in production.
+- **Encryption:** Data is encrypted at rest by the managed DB provider and in transit via TLS.
 
 ## 3. Database Schema
 
-### Human-Readable Format
+Below is the human-readable schema; SQL is provided for PostgreSQL.
 
-- **Users**
-  - **id**: Unique identifier  
-  - **email**: User’s email address (unique)  
-  - **password_hash**: Securely hashed password  
-  - **created_at**: Account creation timestamp
+Tables:
+- **users**: Stores salesperson account info
+- **leads**: Stores lead details
+- **sessions**: (Optional) If using NextAuth/Better-Auth’s built-in session table
 
-- **Sessions**
-  - **id**: Unique session record  
-  - **user_id**: Links to a user  
-  - **token**: Random string for authentication  
-  - **expires_at**: When the token stops working  
-  - **created_at**: When the session was created
-
-- **DashboardItems** *(optional for dynamic data)*
-  - **id**: Unique record  
-  - **title**: Item title  
-  - **content**: Item details  
-  - **created_at**: When the item was added
-
-### SQL Schema (PostgreSQL)
-```sql
--- Users table
+### users table (PostgreSQL SQL)
+```
 CREATE TABLE users (
-  id SERIAL PRIMARY KEY,
-  email VARCHAR(255) UNIQUE NOT NULL,
-  password_hash VARCHAR(255) NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT now()
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email TEXT NOT NULL UNIQUE,
+  password_hash TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+```
 
--- Sessions table
-CREATE TABLE sessions (
-  id SERIAL PRIMARY KEY,
-  user_id INT REFERENCES users(id) ON DELETE CASCADE,
-  token VARCHAR(255) UNIQUE NOT NULL,
-  expires_at TIMESTAMPTZ NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT now()
+### leads table (PostgreSQL SQL)
+```
+CREATE TABLE leads (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  email TEXT NOT NULL,
+  company TEXT NOT NULL,
+  stage TEXT NOT NULL,
+  notes TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+```
 
--- Dashboard items table
-CREATE TABLE dashboard_items (
-  id SERIAL PRIMARY KEY,
-  title TEXT NOT NULL,
-  content TEXT,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-```  
+### sessions table (if applicable)
+```
+-- Provided by NextAuth or Better-Auth, holds session tokens
+``` 
 
 ## 4. API Design and Endpoints
 
-- **Approach**: We follow a **RESTful** style, grouping related endpoints under `/api` directories.
+We follow a RESTful style. All endpoints live under `/pages/api/` in Next.js.
 
-- **Key Endpoints**
-  - `POST /api/auth/register`  
-    • Accepts `{ email, password }`  
-    • Creates a new user and issues a session token  
-  - `POST /api/auth/login`  
-    • Accepts `{ email, password }`  
-    • Verifies credentials and returns a session token  
-  - `POST /api/auth/logout`  
-    • Invalidates the session token on the server  
-  - `GET /api/dashboard/data`  
-    • Requires a valid session  
-    • Returns user-specific data or dashboard items  
+### Authentication
+- `POST /api/auth/login` — User logs in with email/password, returns session token.
+- `POST /api/auth/logout` — Invalidates the session.
+- `GET /api/auth/session` — Returns current session/user info.
 
-- **Communication**
-  - Frontend sends JSON requests; backend replies with JSON and appropriate HTTP status codes.  
-  - Protected routes check for a valid session token (in cookies or Authorization header).
+### Leads Management
+- `GET /api/leads` — List all leads (with optional filters: stage, date).
+- `POST /api/leads` — Create a new lead.
+- `GET /api/leads/[id]` — Get details of one lead.
+- `PUT /api/leads/[id]` — Update name, email, company, stage, notes.
+- `DELETE /api/leads/[id]` — Remove a lead.
+
+### Dashboard
+- `GET /api/dashboard` — Returns metrics:
+  - New leads today
+  - Conversion rate (e.g., closed deals ÷ total leads)
+  - Pipeline status (count per stage)
+
+### Export
+- `GET /api/leads/export` — Triggers an on-demand Excel export (columns: name, email, company, stage, notes). Uses ExcelJS under the hood and returns a downloadable file.
+
+### AI Integration
+- `POST /api/openai/chat` — Proxy to OpenAI GPT-5 API. Handles conversational prompts, lead updates via chat interface.
 
 ## 5. Hosting Solutions
 
-- **Cloud Provider**:  
-  - **Vercel** (recommended) offers seamless Next.js deployments, auto-scaling, and built-in CDN.  
-  - Alternatively, **Netlify** or any Node.js-capable host will work.
+### Production Environment
+- **Vercel** for frontend and API routes:
+  - Built-in CDN for static assets.
+  - Serverless functions for API auto-scale.
+  - Easy env var management.
+- **Managed PostgreSQL** (e.g., AWS RDS, Neon, Heroku Postgres):
+  - Automated backups and updates.
+  - Encryption at rest.
 
-- **Benefits**
-  - **Reliability**: Global servers and failover across regions.  
-  - **Scalability**: Auto-scale serverless functions based on traffic.  
-  - **Cost-Effectiveness**: Pay-per-use model means low cost for small projects.
+### Local Development
+- **Docker Compose** sets up:
+  - `postgres` container
+  - (Optional) `redis` container if caching is added in the future
+  - Next.js app running on port 3000
 
 ## 6. Infrastructure Components
 
-- **Load Balancer**
-  - Provided by the hosting platform—distributes API requests across function instances.
+### Load Balancer & CDN
+- Vercel automatically sits behind a global CDN and load balancer.
 
-- **CDN (Content Delivery Network)**
-  - Vercel’s global edge network caches static assets (CSS, JS, images) for faster page loads.
+### Caching
+- Optional future enhancement: Redis for caching dashboard results or rate-limiting data.
 
-- **Caching**
-  - **Redis** (optional) for session storage or caching dashboard queries to reduce database load.
-
-- **Object Storage**
-  - For file uploads or backups, integrate with AWS S3 or similar services.
-
-- **Message Queue**
-  - In future, use **RabbitMQ** or **Kafka** for background tasks (e.g., email notifications).
+### Content Delivery
+- Static assets and built pages served by Vercel’s CDN, ensuring fast load times worldwide.
 
 ## 7. Security Measures
 
-- **Authentication & Authorization**
-  - Passwords hashed with **bcrypt** and salted.  
-  - Session tokens stored in secure, HttpOnly cookies or Authorization headers.  
-  - Protected endpoints verify tokens before proceeding.
+### Authentication & Authorization
+- **Better-Auth (or NextAuth):** Manages sign-in, sessions, and token storage.
+- Single user role—no complex permission layers needed.
 
-- **Data Encryption**
-  - **HTTPS/TLS** encrypts data in transit.  
-  - Database connections use SSL to encrypt data between the app and the database.
+### Data Protection
+- **TLS/HTTPS** enforced for all requests (Vercel provides HTTPS by default).
+- **ORM parameterization** prevents SQL injection.
+- **Environment Variables:** Secrets (DB URL, JWT secret, OpenAI key) stored outside code.
+- **Encryption at Rest:** Enabled by managed DB.
 
-- **Input Validation**
-  - Every incoming request is validated (e.g., valid email format, password length) to prevent SQL injection or other attacks.
-
-- **Web Security Best Practices**
-  - Enable **CORS** policies to limit allowed origins.  
-  - Use **CSRF tokens** or same-site cookies to prevent cross-site requests.  
-  - Set secure headers with **Helmet** or a similar middleware.
+### Additional Practices
+- Rate limiting on AI chat endpoints to prevent abuse.
+- Use security headers (e.g., Content Security Policy) via Next.js custom server or middleware.
 
 ## 8. Monitoring and Maintenance
 
-- **Performance Monitoring**
-  - Integrate **Sentry** or **LogRocket** for real-time crash reporting and performance tracing.  
-  - Use Vercel’s built-in analytics to track request latencies and error rates.
+### Monitoring
+- **Vercel Analytics:** Tracks serverless function performance and errors.
+- **Error Tracking:** Integrate Sentry or LogRocket for runtime errors.
+- **Database Metrics:** Use RDS/Neon dashboards or pgAdmin stats for connection counts, slow queries.
 
-- **Logging**
-  - Structured logs (JSON) for all API requests and errors, shipped to a log management service like **Datadog** or **Logflare**.
-
-- **Health Checks**
-  - Define a `/health` endpoint that returns a 200 status if the service is up and the database is reachable.
-
-- **Maintenance Strategies**
-  - Automated migrations run on deploy to keep the database schema up to date.  
-  - Scheduled dependency audits and security scans (e.g., `npm audit`).
-  - Regular backups of the database (daily or weekly depending on usage).
+### Maintenance
+- **Dependency Updates:** Run `npm audit` and keep packages up to date.
+- **Schema Migrations:** Use Drizzle migrations on deploy.
+- **Backups:** Automated daily DB backups. Test restore quarterly.
+- **Health Checks:** Schedule a cron job to ping `/api/health` endpoint.
 
 ## 9. Conclusion and Overall Backend Summary
 
-The backend for **codeguide-starter** is built on Next.js API Routes and Node.js, paired with PostgreSQL for data and optional Redis for caching. It follows a clear layered architecture that keeps code easy to maintain and extend. With RESTful endpoints for authentication and data, secure practices like password hashing and HTTPS, and hosting on Vercel for scalability and global performance, this setup meets the project’s goals for a fast, secure, and developer-friendly foundation. Future enhancements—such as background job queues, advanced monitoring, or richer data models—can be added without disrupting the core structure.
+This backend setup leverages Next.js API routes, Drizzle ORM, and PostgreSQL to deliver a scalable, maintainable, and secure AI-powered CRM assistant. Serverless hosting on Vercel ensures reliability and cost-effectiveness, while clear API design and robust security practices protect user data. With this structure, your salespeople have a responsive chat interface for lead management, a real-time dashboard, and on-demand reporting—fueling smarter decisions and faster follow-ups.
+
+**Unique Highlights:**
+- Unified codebase for frontend and backend via Next.js.
+- Type-safe database layer with Drizzle.
+- Seamless AI integration via OpenAI GPT-5.
+- On-demand Excel export using ExcelJS.
+- Effortless scaling on Vercel with zero-config CDN and auto-scaling serverless functions.
+
+---
+**Document Details**
+- **Project ID**: 035d385e-0595-41b5-ab10-8b244d5ee4d3
+- **Document ID**: 92b77182-96c1-4c08-b96b-731eee13ee82
+- **Type**: custom
+- **Custom Type**: backend_structure_document
+- **Status**: completed
+- **Generated On**: 2025-10-05T12:59:16.471Z
+- **Last Updated**: 2025-10-07T11:47:05.260Z

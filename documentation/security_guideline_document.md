@@ -1,116 +1,178 @@
-# Security Guidelines for codeguide-starter
+# Security Guideline Document
 
-This document defines mandatory security principles and implementation best practices tailored to the **codeguide-starter** repository. It aligns with Security-by-Design, Least Privilege, Defense-in-Depth, and other core security tenets. All sections reference specific areas of the codebase (e.g., `/app/api/auth/route.ts`, CSS files, environment configuration) to ensure practical guidance.
+# Implementation Plan for AI-Powered CRM Assistant
 
----
-
-## 1. Security by Design
-
-• Embed security from day one: review threat models whenever adding new features (e.g., new API routes, data fetching).
-• Apply “secure defaults” in Next.js configuration (`next.config.js`), enabling strict mode and disabling debug flags in production builds.
-• Maintain a security checklist in your PR template to confirm that each change has been reviewed against this guideline.
+This step-by-step guide outlines phases, tasks, and security best practices to build a mobile-friendly, teal-branded CRM assistant using Next.js, Drizzle ORM, PostgreSQL, OpenAI GPT-5, and Better-Auth.
 
 ---
 
-## 2. Authentication & Access Control
+## 1. Project Initialization & Environment Setup
 
-### 2.1 Password Storage
-- Use **bcrypt** (or Argon2) with a per-user salt to hash passwords in `/app/api/auth/route.ts`.
-- Enforce a strong password policy on both client and server: minimum 12 characters, mixed case, numbers, and symbols.
-
-### 2.2 Session Management
-- Issue sessions via Secure, HttpOnly, SameSite=strict cookies. Do **not** expose tokens to JavaScript.
-- Implement absolute and idle timeouts. For example, invalidate sessions after 30 minutes of inactivity.
-- Protect against session fixation by regenerating session IDs after authentication.
-
-### 2.3 Brute-Force & Rate Limiting
-- Apply rate limiting at the API layer (e.g., using `express-rate-limit` or Next.js middleware) on `/api/auth` to throttle repeated login attempts.
-- Introduce exponential backoff or temporary lockout after N failed attempts.
-
-### 2.4 Role-Based Access Control (Future)
-- Define user roles in your database model (e.g., `role = 'user' | 'admin'`).
-- Enforce server-side authorization checks in every protected route (e.g., in `dashboard/layout.tsx` loader functions).
+- **Bootstrap Repository**
+  - Clone CodeGuide Starter Fullstack.
+  - Initialize Git repository; configure `.gitignore`.
+- **Environment Configuration**
+  - Create `.env.example` with placeholders: `DATABASE_URL`, `OPENAI_API_KEY`, `NEXTAUTH_SECRET`, etc.
+  - Store secrets securely (e.g., GitHub Actions Secrets, AWS Parameter Store).
+  - Enforce TLS in development with local certs or tools like mkcert.
+- **Dependencies & Lockfiles**
+  - Install required packages: `next`, `react`, `drizzle-orm`, `better-auth`, `tailwindcss`, `shadcn-ui`, `chart.js`, `exceljs`, etc.
+  - Commit lockfile (`package-lock.json` or `yarn.lock`).
+- **Security Baseline**
+  - Integrate SCA tool (e.g., Dependabot) to flag vulnerable dependencies.
+  - Set up ESLint/Prettier and a security linting plugin (e.g., eslint-plugin-security).
 
 ---
 
-## 3. Input Handling & Processing
+## 2. Database & ORM Configuration
 
-### 3.1 Validate & Sanitize All Inputs
-- On **client** (`sign-up/page.tsx`, `sign-in/page.tsx`): perform basic format checks (email regex, password length).
-- On **server** (`/app/api/auth/route.ts`): re-validate inputs with a schema validator (e.g., `zod`, `Joi`).
-- Reject or sanitize any unexpected fields to prevent injection attacks.
-
-### 3.2 Prevent Injection
-- If you introduce a database later, always use parameterized queries or an ORM (e.g., Prisma) rather than string concatenation.
-- Avoid dynamic `eval()` or template rendering with unsanitized user input.
-
-### 3.3 Safe Redirects
-- When redirecting after login or logout, validate the target against an allow-list to prevent open redirects.
+- **PostgreSQL Setup**
+  - Use Docker Compose for local dev; enable at-rest encryption if supported.
+  - Create a dedicated DB user with minimal privileges (least privilege).
+- **Drizzle ORM Integration**
+  - Define `Lead` schema: `id`, `name`, `email`, `company`, `stage`, `notes`, `created_at`, `updated_at`.
+  - Use parameterized queries to prevent SQL injection (Drizzle does this by default).
+- **Migrations & Seeding**
+  - Configure migration scripts; store migration history securely.
+  - Seed minimal data for local testing; scrub any PII.
 
 ---
 
-## 4. Data Protection & Privacy
+## 3. Authentication & Access Control
 
-### 4.1 Encryption & Secrets
-- Enforce HTTPS/TLS 1.2+ for all front-end ↔ back-end communications.
-- Never commit secrets—use environment variables and a secrets manager (e.g., AWS Secrets Manager, Vault).
-
-### 4.2 Sensitive Data Handling
-- Do ​not​ log raw passwords, tokens, or PII in server logs. Mask or redact any user identifiers.
-- If storing PII in `data.json` or a future database, classify it and apply data retention policies.
-
----
-
-## 5. API & Service Security
-
-### 5.1 HTTPS Enforcement
-- In production, redirect all HTTP traffic to HTTPS (e.g., via Vercel’s redirect rules or custom middleware).
-
-### 5.2 CORS
-- Configure `next.config.js` or API middleware to allow **only** your front-end origin (e.g., `https://your-domain.com`).
-
-### 5.3 API Versioning & Minimal Exposure
-- Version your API routes (e.g., `/api/v1/auth`) to handle future changes without breaking clients.
-- Return only necessary fields in JSON responses; avoid leaking internal server paths or stack traces.
+- **Better-Auth Integration**
+  - Configure email/password provider.
+  - Enforce strong password policy (min length, complexity).
+  - Hash passwords with bcrypt/Argon2 plus unique salts.
+- **Session Management**
+  - Use secure, HttpOnly, SameSite=strict cookies.
+  - Set idle and absolute session timeouts.
+  - Provide logout endpoint to invalidate sessions.
+- **Single-Role Model**
+  - All authenticated users share the same role; no admin API exposed.
+  - Secure every API route with server-side auth guard.
 
 ---
 
-## 6. Web Application Security Hygiene
+## 4. AI-Powered Chat Interface
 
-### 6.1 CSRF Protection
-- Use anti-CSRF tokens for any state-changing API calls. Integrate Next.js CSRF middleware or implement synchronizer tokens stored in cookies.
-
-### 6.2 Security Headers
-- In `next.config.js` (or a custom server), add these headers:
-  - `Strict-Transport-Security: max-age=63072000; includeSubDomains; preload`
-  - `X-Content-Type-Options: nosniff`
-  - `X-Frame-Options: DENY`
-  - `Referrer-Policy: no-referrer-when-downgrade`
-  - `Content-Security-Policy`: restrict script/style/src to self and trusted CDNs.
-
-### 6.3 Secure Cookies
-- Set `Secure`, `HttpOnly`, `SameSite=Strict` on all cookies. Avoid storing sensitive data in `localStorage`.
-
-### 6.4 Prevent XSS
-- Escape or encode all user-supplied data in React templates. Avoid `dangerouslySetInnerHTML` unless content is sanitized.
+- **OpenAI GPT-5 Wrapper**
+  - Build a Next.js API route `/api/ai/chat`.
+  - Validate and sanitize user prompts; enforce length limits.
+  - Forward requests to OpenAI with the server’s API key (never expose on client).
+  - Implement rate limiting and throttling via middleware (e.g., `express-rate-limit`).
+- **Follow-Up Question Logic**
+  - In the backend, inspect GPT-5 responses; if required fields missing, prompt for them iteratively.
+  - Persist partial leads in a “draft” state until all required fields are present.
 
 ---
 
-## 7. Infrastructure & Configuration Management
+## 5. Lead Management API Endpoints
 
-- Harden your hosting environment (e.g., Vercel/Netlify) by disabling unnecessary endpoints (GraphQL/GraphiQL playgrounds in production).
-- Rotate secrets and API keys regularly via your secrets manager.
-- Maintain minimal privileges: e.g., database accounts should only have read/write on required tables.
-- Keep Node.js, Next.js, and all system packages up to date.
-
----
-
-## 8. Dependency Management
-
-- Commit and maintain `package-lock.json` to guarantee reproducible builds.
-- Integrate a vulnerability scanner (e.g., GitHub Dependabot, Snyk) to monitor and alert on CVEs in dependencies.
-- Trim unused packages; each added library increases the attack surface.
+- **CRUD Routes** (`/api/leads`)
+  - GET `/api/leads`: list leads (with pagination).
+  - POST `/api/leads`: create lead.
+  - PUT `/api/leads/[id]`: update lead (status/stage).
+  - DELETE `/api/leads/[id]`: delete (soft-delete preferred).
+- **Input Validation**
+  - Server-side validation using a schema library (Zod/Yup).
+  - Sanitize all text inputs (to prevent XSS in case notes).
+- **Authorization Checks**
+  - Ensure only authenticated users can call these routes.
 
 ---
 
-Adherence to these guidelines will ensure that **codeguide-starter** remains secure, maintainable, and resilient as it evolves. Regularly review and update this document to reflect new threats and best practices.
+## 6. Dashboard & Data Visualization
+
+- **Data Aggregation APIs**
+  - `/api/metrics/new-leads-today`.
+  - `/api/metrics/conversion-rate`.
+  - `/api/metrics/pipeline-distribution`.
+- **Frontend Components**
+  - Use Chart.js or Recharts with Shadcn UI wrappers.
+  - Lazy-load charts for performance.
+- **Security Headers**
+  - Add `Content-Security-Policy`, `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `Strict-Transport-Security` in Next.js `headers()` config.
+
+---
+
+## 7. Excel Export Feature
+
+- **API Endpoint**: `/api/leads/export` (GET)
+  - Authenticate request; enforce rate limits.
+  - Query all leads; sanitize data.
+  - Generate workbook with ExcelJS; set proper column types and widths.
+  - Stream file as `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`.
+- **Client Trigger**
+  - Button in UI calls the export API; handle errors gracefully.
+  - Show progress indicator for large datasets.
+
+---
+
+## 8. UI & Styling
+
+- **Tailwind CSS & Shadcn UI**
+  - Configure Tailwind theme to use teal as primary color.
+  - Build mobile-first layouts; use responsive utilities.
+  - Implement collapsible sidebar with Shadcn components.
+- **Accessibility**
+  - Ensure proper ARIA attributes on interactive elements.
+  - Test keyboard navigation and screen-reader compatibility.
+
+---
+
+## 9. Security Hardening & Testing
+
+- **Static & Dynamic Scanning**
+  - Integrate SAST (e.g., ESLint security plugin) and DAST (e.g., OWASP ZAP).
+- **Penetration Testing**
+  - Verify endpoints for injection, XSS, CSRF (use CSRF tokens on state-changing POST/PUT/DELETE).
+  - Confirm cookies use `Secure`, `HttpOnly`, `SameSite`.
+- **Load Testing & Rate-Limiting**
+  - Simulate concurrent users; enforce API rate limits.
+- **Secret Scanning**
+  - Add pre-commit hook to detect accidental secrets in code.
+
+---
+
+## 10. CI/CD & Deployment
+
+- **Continuous Integration**
+  - Run linting, type-checks, tests, and security scans on each PR.
+- **Continuous Deployment**
+  - Deploy to a staging environment; run smoke tests.
+  - Use GitHub Actions (or equivalent) with environment secrets.
+- **Infrastructure as Code**
+  - (Optional) Define Docker Compose for staging/production or Terraform for cloud resources.
+- **Production Hardening**
+  - Disable debug logs and stack traces.
+  - Enforce TLS 1.2+; disable weak ciphers.
+
+---
+
+## 11. Monitoring, Logging & Maintenance
+
+- **Observability**
+  - Integrate logging (structured JSON logs) and metrics (Prometheus/Grafana).
+  - Mask PII in logs; scrub sensitive fields.
+- **Alerts**
+  - Configure alerts for error rates, high latency, and failed exports.
+- **Dependency Updates**
+  - Schedule regular dependency review and upgrades.
+- **Incident Response**
+  - Define rollback and database restoration procedures.
+  - Document security incident playbook.
+
+---
+
+**By following this plan and embedding security controls at every layer, you’ll deliver a robust, compliant, and user-friendly CRM AI assistant.**
+
+---
+**Document Details**
+- **Project ID**: 035d385e-0595-41b5-ab10-8b244d5ee4d3
+- **Document ID**: 49aa40bc-cb9d-41cb-9c12-312ef3d2484c
+- **Type**: custom
+- **Custom Type**: security_guideline_document
+- **Status**: completed
+- **Generated On**: 2025-10-05T12:59:10.431Z
+- **Last Updated**: 2025-10-07T11:47:05.260Z
